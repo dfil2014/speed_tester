@@ -1,0 +1,168 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="UTF-8">
+   <link href="style/style.css" rel="stylesheet">
+   <script src="js/jquery-3.5.1.min.js"></script>
+<meta http-equiv="Cache-Control" content="no-cache">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="-1">
+</head>
+<body>
+
+		<script>
+document.write('<svg class="radial-progress" data-percentage="0" viewBox="0 0 80 80">');
+document.write('<circle class="incomplete" cx="40" cy="40" r="35"></circle>');
+document.write('<circle id=\'progress\' class="complete" cx="40" cy="40" r="35" style=""></circle>');
+document.write('<circle class="incomplete" cx="40" cy="40" r="25"></circle>');
+document.write('<circle id=\'speed\' class="complete" style="stroke:#7b68ee;"cx="40" cy="40" r="25" style=""></circle>');
+document.write('<text id="text_p" class="percentage" x="50%" y="57%" transform="matrix(0, 1, -1, 0, 80, 0)">0%</text>');
+document.write('<text id="text_p2" class="percentage" x="73%" y="100%" transform="matrix(0, 0.7, -0.7, 0, 80, 0)">0 Mbps</text>');
+        document.write('</svg>');
+	document.write('<div id="message"></div>');		
+//JUST AN EXAMPLE, PLEASE USE YOUR OWN PICTURE!
+var imageAddr = 'file.php'; 
+var downloadSize = 51190506; //bytes
+var message=document.getElementById('message');
+let file;
+let test;
+  var fd = new FormData();
+function ShowProgressMessage(msg) {
+    if (console) {
+        if (typeof msg == "string") {
+            message.innerHTML+='<p>'+msg+'</p>';
+			} 
+			else {
+            for (var i = 0; i < msg.length; i++) {
+              message.innerHTML+='<p>'+msg[i]+'</p>';
+            }
+        }
+    }
+    
+    var oProgress = document.getElementById("progress");
+    if (oProgress) {
+        var actualHTML = (typeof msg == "string") ? msg : msg.join("<br />");
+        oProgress.innerHTML = actualHTML;
+    }
+}
+
+
+function InitiateSpeedDetection() {
+    ShowProgressMessage("Проверка скорости, подождите...");
+    window.setTimeout(MeasureConnectionSpeed, 1);
+};    
+
+
+if (window.addEventListener) {
+    window.addEventListener('load', InitiateSpeedDetection, false);
+} else if (window.attachEvent) {
+    window.attachEvent('onload', InitiateSpeedDetection);
+}
+
+
+function MeasureConnectionSpeed() {
+    var startTime, endTime;
+    var download = new XMLHttpRequest();
+	download.open("GET",imageAddr,true);
+	download.responseType = 'blob';
+	download.send();
+    download.onload = function () {
+        endTime = (new Date()).getTime();
+		file=download.response;
+        showResults();
+		UploadConnectionSpeed();
+    }
+	
+	
+    
+    download.onerror = function (err, msg) {
+        ShowProgressMessage("Испорчен файл, или ошибка загрузки");
+    }
+	download.onprogress=function(event) {
+var percent=event.loaded/event.total*100;
+var time=new Date().getTime();
+var speed=event.loaded*8/((time-startTime)/1000)/1048576;
+document.getElementById('text_p2').innerHTML=Math.round(speed)+' Mbps';
+document.getElementById('text_p').innerHTML=Math.round(percent)+'%';
+var circle=document.getElementById('progress');
+var circle2=document.getElementById('speed');
+var circumfer=2*Math.PI*circle.getAttribute('r');
+var stroke=circumfer-((percent*circumfer)/100);
+circle.style.strokeDashoffset=stroke+"px";
+var circumfer2=2*Math.PI*circle2.getAttribute('r');
+var stroke2=circumfer2-((speed*circumfer2)/160);
+circle2.style.strokeDashoffset=stroke2+"px";
+}
+    
+    startTime = (new Date()).getTime();
+    var cacheBuster = "?nnn=" + startTime;
+    download.src = imageAddr + cacheBuster;
+    
+    function showResults() {
+        var duration = (endTime - startTime) / 1000;
+        var bitsLoaded = downloadSize * 8;
+        var speedBps = (bitsLoaded / duration).toFixed(2);
+        var speedKbps = (speedBps / 1024).toFixed(2);
+        var speedMbps = (speedKbps / 1024).toFixed(2);
+        ShowProgressMessage([
+            "Скорость входящего соединения:", 
+            speedBps + " bps", 
+            speedKbps + " kbps", 
+            speedMbps + " Mbps"
+        ]);
+    }
+}
+function UploadConnectionSpeed()
+	{
+	var up=new XMLHttpRequest();
+	up.upload.onprogress=function(event) {
+var percent=100-(event.loaded/event.total*100);
+var time=new Date().getTime();
+var speed=event.loaded*8/((time-startTime)/1000)/1048576;
+document.getElementById('text_p2').innerHTML=Math.round(speed)+' Mbps';
+document.getElementById('text_p').innerHTML=Math.round(percent)+'%';
+var circle=document.getElementById('progress');
+var circle2=document.getElementById('speed');
+var circumfer=2*Math.PI*circle.getAttribute('r');
+var stroke=circumfer-((percent*circumfer)/100);
+circle.style.strokeDashoffset=stroke+"px";
+var circumfer2=2*Math.PI*circle2.getAttribute('r');
+var stroke2=circumfer2-((speed*circumfer2)/160);
+circle2.style.strokeDashoffset=stroke2+"px";
+}
+	up.open("POST","upload.php",true);
+	  up.onreadystatechange = function() {
+    if (up.readyState == 4 && up.status == 200) {
+      var imageName = up.responseText;
+      //do what you want with the image name returned
+      //e.g update the interface
+    }
+  }
+	fd.append('inputfile',file);
+	up.send(fd);
+	    up.upload.onload = function () {
+        endTime = (new Date()).getTime();
+        showResultsOut();
+    }
+	
+	up.upload.onerror=function (err, msg) {
+        ShowProgressMessage("Ошибка измерения исходящей скорости");
+    }
+var startTime = (new Date()).getTime();
+    function showResultsOut() {
+        var duration = (endTime - startTime) / 1000;
+        var bitsLoaded = downloadSize * 8;
+        var speedBps = (bitsLoaded / duration).toFixed(2);
+        var speedKbps = (speedBps / 1024).toFixed(2);
+        var speedMbps = (speedKbps / 1024).toFixed(2);
+        ShowProgressMessage([
+            "Скорость исходящего соединения:", 
+            speedBps + " bps", 
+            speedKbps + " kbps", 
+            speedMbps + " Mbps"
+        ]);
+    }
+}
+</script>
+</body>
+</html>
